@@ -4,13 +4,11 @@
 # Credits:
 #  - https://stackoverflow.com/questions/10195139/how-to-retrieve-sql-result-column-value-using-column-name-in-python
 #  - https://github.com/PyMySQL/PyMySQL
+#  - https://stackoverflow.com/questions/37926717/psycopg2-unable-to-insert-into-specific-columns
 
 # Import needed modules
 from __future__ import with_statement
-from grizzled.os import working_directory
-from urllib.parse import urlparse
-import os, sys, yaml, re
-import importlib
+import os, sys, yaml
 import pymysql.cursors
 import psycopg2
 
@@ -54,8 +52,9 @@ cursorpg = connpg.cursor()
 
 # execute a statement
 print('PostgreSQL database version:')
-cursorpg.execute('')
 cursorpg.execute('SELECT * FROM releases')
+record = cursorpg.fetchall()
+print(record)
 
 with connection:
     with connection.cursor() as cursor:
@@ -65,18 +64,25 @@ with connection:
         result_set = cursor.fetchall()
         for row in result_set:
             print("hello")
-            id = row["id"]
+            release_id = row["id"]
             name = row["name"]
             slug = row["slug"]
             description = row["description"]
             mediainfo = row["mediainfo"]
             category_id = row["category_id"]
-            user_id = row["user_id"]
+            uploader_id = row["user_id"]
             featured = row["featured"]
             created_at = row["created_at"]
             updated_at = row["updated_at"]
             type_id = row["type_id"]
             ipfs_hash = row["stream_id"]
+            resolution_id = row["resolution_id"]
             print("Processing id "+ str(id))
-            print("Name:" + name + " user_id: " + str(user_id))
-        # Dump it into The Curator (new prototype)
+            print("Name:" + name + " uploader_id: " + str(uploader_id) + " ipfs hash " + ipfs_hash)
+
+            # cursorpg.execute
+            print('''INSERT INTO releases
+                (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
+                VALUES ("{release_id}", "{name}", "{category_id}", "{type_id}", "{resolution_id}", "{uploader_id}", "{featured}", "{created_at}", "{updated_at}", "{description}", "{mediainfo}", "{slug}", "{ipfs_hash}"));
+                '''.format(release_id=release_id,name=name,category_id=category_id,type_id=type_id,resolution_id=resolution_id,uploader_id=uploader_id,featured=featured,created_at=created_at,updated_at=updated_at,description=description,mediainfo=mediainfo,slug=slug,ipfs_hash=ipfs_hash))
+            # Dump it into The Curator (new prototype)
