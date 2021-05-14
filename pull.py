@@ -80,9 +80,11 @@ with connection:
             print("Processing id "+ str(id))
             print("Name:" + name + " uploader_id: " + str(uploader_id) + " ipfs hash " + ipfs_hash)
 
-            # cursorpg.execute
-            print('''INSERT INTO releases
-                (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
-                VALUES ("{release_id}", "{name}", "{category_id}", "{type_id}", "{resolution_id}", "{uploader_id}", "{featured}", "{created_at}", "{updated_at}", "{description}", "{mediainfo}", "{slug}", "{ipfs_hash}"));
-                '''.format(release_id=release_id,name=name,category_id=category_id,type_id=type_id,resolution_id=resolution_id,uploader_id=uploader_id,featured=featured,created_at=created_at,updated_at=updated_at,description=description,mediainfo=mediainfo,slug=slug,ipfs_hash=ipfs_hash))
+            # do this the right way - https://www.psycopg.org/docs/usage.html?highlight=escape#the-problem-with-the-query-parameters
+            SQL = '''INSERT INTO releases
+                  (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
+                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
+            data = (release_id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
+            cursorpg.execute(SQL, data)
+            connpg.commit()
             # Dump it into The Curator (new prototype)
