@@ -59,7 +59,7 @@ print(record)
 with connection:
     with connection.cursor() as cursor:
         # Read everything from Unit3D (traditional site)
-        sql = "SELECT * FROM `torrents` WHERE id=1"
+        sql = "SELECT * FROM `torrents` WHERE status=1"
         cursor.execute(sql)
         result_set = cursor.fetchall()
         for row in result_set:
@@ -71,11 +71,13 @@ with connection:
             mediainfo = row["mediainfo"]
             category_id = row["category_id"]
             uploader_id = row["user_id"]
-            featured = row["featured"]
+            featured = bool(row["featured"])
             created_at = row["created_at"]
             updated_at = row["updated_at"]
             type_id = row["type_id"]
-            ipfs_hash = row["stream_id"]
+            ipfs_hash = "none"
+            if row["stream_id"] is not None:
+                ipfs_hash = row["stream_id"]
             resolution_id = row["resolution_id"]
             print("Processing id "+ str(id))
             print("Name:" + name + " uploader_id: " + str(uploader_id) + " ipfs hash " + ipfs_hash)
@@ -83,7 +85,10 @@ with connection:
             # do this the right way - https://www.psycopg.org/docs/usage.html?highlight=escape#the-problem-with-the-query-parameters
             SQL = '''INSERT INTO releases
                   (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
-                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
+                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                  ON CONFLICT (id) DO UPDATE SET
+                  (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
+                  = (EXCLUDED.id, EXCLUDED.name, EXCLUDED.category_id, EXCLUDED.type_id, EXCLUDED.resolution_id, EXCLUDED.uploader_id, EXCLUDED.featured, EXCLUDED.created_at, EXCLUDED.updated_at, EXCLUDED.description, EXCLUDED.mediainfo, EXCLUDED.slug, EXCLUDED.ipfs_hash);'''
             data = (release_id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
             cursorpg.execute(SQL, data)
             connpg.commit()
