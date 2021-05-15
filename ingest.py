@@ -8,14 +8,11 @@
 
 # Import needed modules
 from __future__ import with_statement
-import os, sys, yaml
+import os
+import sys
+import yaml
 import pymysql.cursors
 import psycopg2
-
-# Set our API key
-from pathlib import Path
-apiname = os.path.expanduser('~/.rcc-api')
-apitoken = Path(apiname).read_text()
 
 # Dynamically load in our magic config files
 configname = os.path.expanduser('~/.rcc-tools.yml')
@@ -27,8 +24,6 @@ if config is None:
     sys.exit(1338)
 
 # Get our Riff.CC credentials and load them in
-rccuser = config["rccuser"]
-rccpass = config["rccpass"]
 sqlpassword = config["password"]
 curator_user = config["curator_user"]
 curator_pass = config["curator_pass"]
@@ -50,20 +45,14 @@ connpg = psycopg2.connect(host=curator_host,
 # create a cursor
 cursorpg = connpg.cursor()
 
-# execute a statement
-print('PostgreSQL database version:')
-cursorpg.execute('SELECT * FROM releases')
-record = cursorpg.fetchall()
-print(record)
-
 with connection:
     with connection.cursor() as cursor:
-        # Read everything from Unit3D (traditional site)
+        # Read everything from Unit3D (traditional site), filtering for only valid torrents
         sql = "SELECT * FROM `torrents` WHERE status=1"
         cursor.execute(sql)
         result_set = cursor.fetchall()
         for row in result_set:
-            print("hello")
+            # For every existing release, gather relevant metadata and massage it into Curator.
             release_id = row["id"]
             name = row["name"]
             slug = row["slug"]
@@ -79,9 +68,7 @@ with connection:
             if row["stream_id"] is not None:
                 ipfs_hash = row["stream_id"]
             resolution_id = row["resolution_id"]
-            print("Processing id "+ str(id))
-            print("Name:" + name + " uploader_id: " + str(uploader_id) + " ipfs hash " + ipfs_hash)
-
+            print("Processing release id: " + str(release_id) + " (name: " + str(name) + ")")
             # do this the right way - https://www.psycopg.org/docs/usage.html?highlight=escape#the-problem-with-the-query-parameters
             SQL = '''INSERT INTO releases
                   (id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
@@ -91,5 +78,6 @@ with connection:
                   = (EXCLUDED.id, EXCLUDED.name, EXCLUDED.category_id, EXCLUDED.type_id, EXCLUDED.resolution_id, EXCLUDED.uploader_id, EXCLUDED.featured, EXCLUDED.created_at, EXCLUDED.updated_at, EXCLUDED.description, EXCLUDED.mediainfo, EXCLUDED.slug, EXCLUDED.ipfs_hash);'''
             data = (release_id, name, category_id, type_id, resolution_id, uploader_id, featured, created_at, updated_at, description, mediainfo, slug, ipfs_hash)
             cursorpg.execute(SQL, data)
+            # We could move this outside the loop and simply commit everything in one go.
+            # Write the data to the Curator.
             connpg.commit()
-            # Dump it into The Curator (new prototype)
