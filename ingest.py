@@ -47,6 +47,7 @@ cursorpg = connpg.cursor()
 
 with connection:
     with connection.cursor() as cursor:
+        # Ingest releases
         # Read everything from Unit3D (traditional site), filtering for only valid torrents
         sql = "SELECT * FROM `torrents` WHERE status=1"
         cursor.execute(sql)
@@ -64,7 +65,7 @@ with connection:
             created_at = row["created_at"]
             updated_at = row["updated_at"]
             type_id = row["type_id"]
-            ipfs_hash = "none"
+            ipfs_hash = None
             if row["stream_id"] is not None:
                 ipfs_hash = row["stream_id"]
             resolution_id = row["resolution_id"]
@@ -80,4 +81,30 @@ with connection:
             cursorpg.execute(SQL, data)
             # We could move this outside the loop and simply commit everything in one go.
             # Write the data to the Curator.
-            connpg.commit()
+        connpg.commit()
+
+        # Reset any re-used params by setting them to empty strings, just in case.
+        name = ""
+        slug = ""
+
+        # Ingest categories from Unit3D
+        sql = "SELECT * FROM `categories`"
+        cursor.execute(sql)
+        result_set = cursor.fetchall()
+        for row in result_set:
+            print(row)
+            category_id = row["id"]
+            name = row["name"]
+            slug = row["slug"]
+            image = row["image"]
+            SQL = '''INSERT INTO categories
+                  (id, name, slug, image)
+                  VALUES (%s, %s, %s, %s)
+                  ON CONFLICT (id) DO UPDATE SET
+                  (id, name, slug, image)
+                  = (EXCLUDED.id, EXCLUDED.name, EXCLUDED.slug, EXCLUDED.image);'''
+            data = (category_id, name, slug, image)
+            cursorpg.execute(SQL, data)
+            # We could move this outside the loop and simply commit everything in one go.
+            # Write the data to the Curator.
+        connpg.commit()
